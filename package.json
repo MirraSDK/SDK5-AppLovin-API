@@ -1,0 +1,12 @@
+{
+  "name": "com.mirrasdk.applovin.api",
+  "version": "1.0.0",
+  "displayName": "AppLovin API for MirraSDK5",
+  "unity": "2021.3",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "author": {
+    "name": "Roman Likhadievski",
+    "url": "https://github.com/romanlee17"
+  }
+}
