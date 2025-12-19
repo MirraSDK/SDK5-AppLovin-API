@@ -41,7 +41,40 @@ namespace MirraGames.SDK.AppLovin
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnRewardedAdReceivedReward;
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnRewardedAdRevenuePaidEvent;
 
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnInterstitialAdLoaded;
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnInterstitialAdFailedToLoad;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnInterstitialAdFailedToShow;
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnInterstitialAdClosed;
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnInterstitialAdRevenuePaidEvent;
+
             MaxSdk.InitializeSdk();
+        }
+
+        private void OnInterstitialAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
+        }
+
+        private void OnInterstitialAdClosed(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdClosed", arg1, JsonUtility.ToJson(info));
+            onInterstitialClose?.Invoke(true);
+        }
+
+        private void OnInterstitialAdFailedToShow(string arg1, MaxSdkBase.ErrorInfo info1, MaxSdkBase.AdInfo info2)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdFailedToShow", arg1, JsonUtility.ToJson(info1), JsonUtility.ToJson(info2));
+            onInterstitialClose?.Invoke(false);
+        }
+
+        private void OnInterstitialAdFailedToLoad(string arg1, MaxSdkBase.ErrorInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdFailedToLoad", arg1, JsonUtility.ToJson(info));
+        }
+
+        private void OnInterstitialAdLoaded(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdLoaded", arg1, JsonUtility.ToJson(info));
         }
 
         private void OnRewardedAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
