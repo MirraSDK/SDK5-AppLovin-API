@@ -26,11 +26,14 @@ namespace MirraGames.SDK.AppLovin
 
             MaxSdkCallbacks.OnSdkInitializedEvent += (MaxSdkBase.SdkConfiguration sdkConfiguration) =>
             {
-                Debug.Log("Applovin Initialized");
+                Logger.CreateText(nameof(AppLovinAds), "Max SDK Initialized", JsonUtility.ToJson(sdkConfiguration));
+                SetInitialized();
 #if UNITY_ANDROID
                 MaxSdk.LoadRewardedAd(configuration.RewardedAdUnitIdAndroid);
+                MaxSdk.LoadInterstitial(configuration.InterstitialAdUnitIdAndroid);
 #elif UNITY_IOS
                 MaxSdk.LoadRewardedAd(configuration.RewardedAdUnitIdIOS);
+                MaxSdk.LoadInterstitial(configuration.InterstitialAdUnitIdIOS);
 #endif
             };
 
