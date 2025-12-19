@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using Logger = MirraGames.SDK.Common.Logger;
+using AppLovinMax;
 
 namespace MirraGames.SDK.AppLovin
 {
@@ -12,33 +13,138 @@ namespace MirraGames.SDK.AppLovin
     public class AppLovinAds : CommonAds
     {
 
-        public AppLovinAds(IEventAggregator eventAggregator) : base(eventAggregator)
-        {
+        private readonly AppLovinAds_Configuration configuration;
 
+        private string rewardedTag;
+        private Action<bool> onRewardedClose;
+        private bool isRewardedSuccess;
+        private Action<bool> onInterstitialClose;
+
+        public AppLovinAds(AppLovinAds_Configuration configuration, IEventAggregator eventAggregator) : base(eventAggregator)
+        {
+            this.configuration = configuration;
+
+            MaxSdkCallbacks.OnSdkInitializedEvent += (MaxSdkBase.SdkConfiguration sdkConfiguration) =>
+            {
+                Debug.Log("Applovin Initialized");
+#if UNITY_ANDROID
+                MaxSdk.LoadRewardedAd(configuration.RewardedAdUnitIdAndroid);
+#elif UNITY_IOS
+                MaxSdk.LoadRewardedAd(configuration.RewardedAdUnitIdIOS);
+#endif
+            };
+
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnRewardedAdLoaded;
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += OnRewardedAdFailedToLoad;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnRewardedAdFailedToShow;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnRewardedAdClosed;
+            MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnRewardedAdReceivedReward;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnRewardedAdRevenuePaidEvent;
+
+            MaxSdk.InitializeSdk();
+        }
+
+        private void OnRewardedAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
+        }
+
+        private void OnRewardedAdReceivedReward(string arg1, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdReceivedReward", arg1, JsonUtility.ToJson(reward), JsonUtility.ToJson(info));
+            isRewardedSuccess = true;
+        }
+
+        private void OnRewardedAdClosed(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdClosed", arg1, JsonUtility.ToJson(info));
+            onRewardedClose?.Invoke(isRewardedSuccess);
+            isRewardedSuccess = false;
+
+            // Reload the rewarded ad
+            string adUnitId = string.Empty;
+#if UNITY_ANDROID
+            adUnitId = configuration.RewardedAdUnitIdAndroid;
+#elif UNITY_IOS
+            adUnitId = configuration.RewardedAdUnitIdIOS;
+#endif
+            MaxSdk.LoadRewardedAd(adUnitId);
+        }
+
+        private void OnRewardedAdFailedToShow(string arg1, MaxSdkBase.ErrorInfo info1, MaxSdkBase.AdInfo info2)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdFailedToShow", arg1, JsonUtility.ToJson(info1), JsonUtility.ToJson(info2));
+            onRewardedClose?.Invoke(false);
+        }
+
+        private void OnRewardedAdFailedToLoad(string arg1, MaxSdkBase.ErrorInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdFailedToLoad", arg1, JsonUtility.ToJson(info));
+        }
+
+        private void OnRewardedAdLoaded(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdLoaded", arg1, JsonUtility.ToJson(info));
         }
 
         protected override void InvokeBannerImpl()
         {
-
+            Logger.NotImplementedWarning(this, nameof(InvokeBannerImpl));
         }
 
         protected override void RefreshBannerImpl()
         {
-
+            Logger.NotImplementedWarning(this, nameof(RefreshBannerImpl));
         }
 
         protected override void DisableBannerImpl()
         {
-
+            Logger.NotImplementedWarning(this, nameof(DisableBannerImpl));
         }
 
         protected override void InvokeInterstitialImpl(Action onOpen = null, Action<bool> onClose = null)
         {
+            string adUnitId = string.Empty;
+#if UNITY_ANDROID
+            adUnitId = configuration.InterstitialAdUnitIdAndroid;
+#elif UNITY_IOS
+            adUnitId = configuration.InterstitialAdUnitIdIOS;
+#endif
+            onInterstitialClose = onClose;
 
+            if (MaxSdk.IsInterstitialReady(adUnitId))
+            {
+                onOpen?.Invoke();
+                MaxSdk.ShowInterstitial(adUnitId);
+            }
+            else
+            {
+                Logger.CreateText(nameof(AppLovinAds), "Interstitial ad not ready");
+                onClose?.Invoke(false);
+            }
         }
 
         protected override void InvokeRewardedImpl(Action onOpen = null, Action<bool> onClose = null, string rewardTag = null)
         {
+            string adUnitId = string.Empty;
+#if UNITY_ANDROID
+            adUnitId = configuration.RewardedAdUnitIdAndroid;
+#elif UNITY_IOS
+            adUnitId = configuration.RewardedAdUnitIdIOS;
+#endif
+            rewardedTag = rewardTag;
+            onRewardedClose = onClose;
+
+            if (MaxSdk.IsRewardedAdReady(adUnitId))
+            {
+                onOpen?.Invoke();
+                MaxSdk.ShowRewardedAd(adUnitId);
+            }
+            else
+            {
+                Logger.CreateText(nameof(AppLovinAds), "Rewarded ad not ready");
+                onClose?.Invoke(false);
+            }
 
         }
 

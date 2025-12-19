@@ -2,7 +2,8 @@
     "name": "MirraGames.SDK.AppLovin",
     "rootNamespace": "MirraGames.SDK.AppLovin",
     "references": [
-        "MirraGames.SDK.Common"
+        "MirraGames.SDK.Common",
+        "MaxSdk.Scripts"
     ],
     "includePlatforms": [
         "Android",
