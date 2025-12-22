@@ -53,6 +53,11 @@ namespace MirraGames.SDK.AppLovin
             MaxSdk.InitializeSdk();
         }
 
+        public override bool IsInterstitialAvailable => true;
+        public override bool IsInterstitialReady => true;
+        public override bool IsRewardedAvailable => true;
+        public override bool IsRewardedReady => true;
+
         private void OnInterstitialAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
