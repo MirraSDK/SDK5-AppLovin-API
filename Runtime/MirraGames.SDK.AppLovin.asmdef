@@ -3,7 +3,8 @@
     "rootNamespace": "MirraGames.SDK.AppLovin",
     "references": [
         "MirraGames.SDK.Common",
-        "MaxSdk.Scripts"
+        "MaxSdk.Scripts",
+        "AppMetrica"
     ],
     "includePlatforms": [
         "Android",

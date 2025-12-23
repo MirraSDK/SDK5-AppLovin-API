@@ -6,6 +6,7 @@ using UnityEngine.Events;
 using Logger = MirraGames.SDK.Common.Logger;
 using AppLovinMax;
 using Firebase.Analytics;
+using Io.AppMetrica;
 
 namespace MirraGames.SDK.AppLovin
 {
@@ -64,13 +65,22 @@ namespace MirraGames.SDK.AppLovin
             string result = "success";  // Loaded successfully
             string connection = Application.internetReachability != NetworkReachability.NotReachable ? "online" : "offline";
 
+            string jsonParams = $@"{{
+                ""ad_type"": ""{adType}"",
+                ""placement"": ""{placement}"",
+                ""result"": ""{result}"",
+                ""connection"": ""{connection}""
+            }}";
+
             FirebaseAnalytics.LogEvent("video_ads_available", new Parameter[]
             {
-        new Parameter("ad_type", adType),
-        new Parameter("placement", placement),
-        new Parameter("result", result),
-        new Parameter("connection", connection)
+                new Parameter("ad_type", adType),
+                new Parameter("placement", placement),
+                new Parameter("result", result),
+                new Parameter("connection", connection)
             });
+
+            AppMetrica.ReportEvent("video_ads_available", jsonParams);
         }
 
         private void LogVideoAdsStarted(string adType, string placement)
@@ -78,26 +88,44 @@ namespace MirraGames.SDK.AppLovin
             string result = "started";  // Or detect if show failed later
             string connection = Application.internetReachability != NetworkReachability.NotReachable ? "online" : "offline";
 
+            string jsonParams = $@"{{
+                ""ad_type"": ""{adType}"",
+                ""placement"": ""{placement}"",
+                ""result"": ""{result}"",
+                ""connection"": ""{connection}""
+            }}";
+
             FirebaseAnalytics.LogEvent("video_ads_started", new Parameter[]
             {
-        new Parameter("ad_type", adType),
-        new Parameter("placement", placement),
-        new Parameter("result", result),
-        new Parameter("connection", connection)
+                new Parameter("ad_type", adType),
+                new Parameter("placement", placement),
+                new Parameter("result", result),
+                new Parameter("connection", connection)
             });
+
+            AppMetrica.ReportEvent("video_ads_started", jsonParams);
         }
 
         private void LogVideoAdsWatch(string adType, string placement, string result)
         {
             string connection = Application.internetReachability != NetworkReachability.NotReachable ? "online" : "offline";
 
+            string jsonParams = $@"{{
+                ""ad_type"": ""{adType}"",
+                ""placement"": ""{placement}"",
+                ""result"": ""{result}"",
+                ""connection"": ""{connection}""
+            }}";
+
             FirebaseAnalytics.LogEvent("video_ads_watch", new Parameter[]
             {
-        new Parameter("ad_type", adType),
-        new Parameter("placement", placement),
-        new Parameter("result", result),  // "completed", "skipped", etc.
-        new Parameter("connection", connection)
+                new Parameter("ad_type", adType),
+                new Parameter("placement", placement),
+                new Parameter("result", result),  // "completed", "skipped", etc.
+                new Parameter("connection", connection)
             });
+
+            AppMetrica.ReportEvent("video_ads_watch", jsonParams);
         }
 
         private void OnInterstitialAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
