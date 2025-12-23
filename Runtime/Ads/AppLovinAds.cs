@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Logger = MirraGames.SDK.Common.Logger;
 using AppLovinMax;
+using Firebase.Analytics;
 
 namespace MirraGames.SDK.AppLovin
 {
@@ -58,6 +59,47 @@ namespace MirraGames.SDK.AppLovin
         public override bool IsRewardedAvailable => true;
         public override bool IsRewardedReady => true;
 
+        private void LogVideoAdsAvailable(string adType, string placement)
+        {
+            string result = "success";  // Loaded successfully
+            string connection = Application.internetReachability != NetworkReachability.NotReachable ? "online" : "offline";
+
+            FirebaseAnalytics.LogEvent("video_ads_available", new Parameter[]
+            {
+        new Parameter("ad_type", adType),
+        new Parameter("placement", placement),
+        new Parameter("result", result),
+        new Parameter("connection", connection)
+            });
+        }
+
+        private void LogVideoAdsStarted(string adType, string placement)
+        {
+            string result = "started";  // Or detect if show failed later
+            string connection = Application.internetReachability != NetworkReachability.NotReachable ? "online" : "offline";
+
+            FirebaseAnalytics.LogEvent("video_ads_started", new Parameter[]
+            {
+        new Parameter("ad_type", adType),
+        new Parameter("placement", placement),
+        new Parameter("result", result),
+        new Parameter("connection", connection)
+            });
+        }
+
+        private void LogVideoAdsWatch(string adType, string placement, string result)
+        {
+            string connection = Application.internetReachability != NetworkReachability.NotReachable ? "online" : "offline";
+
+            FirebaseAnalytics.LogEvent("video_ads_watch", new Parameter[]
+            {
+        new Parameter("ad_type", adType),
+        new Parameter("placement", placement),
+        new Parameter("result", result),  // "completed", "skipped", etc.
+        new Parameter("connection", connection)
+            });
+        }
+
         private void OnInterstitialAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
@@ -67,6 +109,7 @@ namespace MirraGames.SDK.AppLovin
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdClosed", arg1, JsonUtility.ToJson(info));
             onInterstitialClose?.Invoke(true);
+            LogVideoAdsWatch("interstitial", "default_placement", "completed");
         }
 
         private void OnInterstitialAdFailedToShow(string arg1, MaxSdkBase.ErrorInfo info1, MaxSdkBase.AdInfo info2)
@@ -83,6 +126,7 @@ namespace MirraGames.SDK.AppLovin
         private void OnInterstitialAdLoaded(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdLoaded", arg1, JsonUtility.ToJson(info));
+            LogVideoAdsAvailable("interstitial", "default_placement");
         }
 
         private void OnRewardedAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
@@ -94,6 +138,7 @@ namespace MirraGames.SDK.AppLovin
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdReceivedReward", arg1, JsonUtility.ToJson(reward), JsonUtility.ToJson(info));
             isRewardedSuccess = true;
+            LogVideoAdsWatch("rewarded", rewardedTag ?? "default_placement", "completed");
         }
 
         private void OnRewardedAdClosed(string arg1, MaxSdkBase.AdInfo info)
@@ -126,6 +171,7 @@ namespace MirraGames.SDK.AppLovin
         private void OnRewardedAdLoaded(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdLoaded", arg1, JsonUtility.ToJson(info));
+            LogVideoAdsAvailable("rewarded", rewardedTag ?? "default_placement");
         }
 
         protected override void InvokeBannerImpl()
@@ -157,6 +203,7 @@ namespace MirraGames.SDK.AppLovin
             {
                 onOpen?.Invoke();
                 MaxSdk.ShowInterstitial(adUnitId);
+                LogVideoAdsStarted("interstitial", "default_placement");
             }
             else
             {
@@ -180,6 +227,7 @@ namespace MirraGames.SDK.AppLovin
             {
                 onOpen?.Invoke();
                 MaxSdk.ShowRewardedAd(adUnitId);
+                LogVideoAdsStarted("rewarded", rewardTag ?? "default_placement");
             }
             else
             {
