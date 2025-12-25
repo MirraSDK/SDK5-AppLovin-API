@@ -137,6 +137,14 @@ namespace MirraGames.SDK.AppLovin
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdClosed", arg1, JsonUtility.ToJson(info));
             onInterstitialClose?.Invoke(true);
+
+            string adUnitId = string.Empty;
+#if UNITY_ANDROID
+            adUnitId = configuration.InterstitialAdUnitIdAndroid;
+#elif UNITY_IOS
+            adUnitId = configuration.InterstitialAdUnitIdIOS;
+#endif
+            MaxSdk.LoadInterstitial(adUnitId);
             LogVideoAdsWatch("interstitial", "default_placement", "completed");
         }
 
