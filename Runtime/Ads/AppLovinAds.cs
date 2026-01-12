@@ -17,7 +17,7 @@ namespace MirraGames.SDK.AppLovin
 
         private readonly AppLovinAds_Configuration configuration;
 
-        private string rewardedTag;
+        private string rewardedPlacementId;
         private Action<bool> onRewardedClose;
         private bool isRewardedSuccess;
         private Action<bool> onInterstitialClose;
@@ -174,7 +174,7 @@ namespace MirraGames.SDK.AppLovin
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdReceivedReward", arg1, JsonUtility.ToJson(reward), JsonUtility.ToJson(info));
             isRewardedSuccess = true;
-            LogVideoAdsWatch("rewarded", rewardedTag ?? "default_placement", "completed");
+            LogVideoAdsWatch("rewarded", rewardedPlacementId ?? "default_placement", "completed");
         }
 
         private void OnRewardedAdClosed(string arg1, MaxSdkBase.AdInfo info)
@@ -207,7 +207,7 @@ namespace MirraGames.SDK.AppLovin
         private void OnRewardedAdLoaded(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdLoaded", arg1, JsonUtility.ToJson(info));
-            LogVideoAdsAvailable("rewarded", rewardedTag ?? "default_placement");
+            LogVideoAdsAvailable("rewarded", rewardedPlacementId ?? "default_placement");
         }
 
         protected override void InvokeBannerImpl()
@@ -225,7 +225,7 @@ namespace MirraGames.SDK.AppLovin
             Logger.NotImplementedWarning(this, nameof(DisableBannerImpl));
         }
 
-        protected override void InvokeInterstitialImpl(Action onOpen = null, Action<bool> onClose = null)
+        protected override void InvokeInterstitialImpl(InterstitialParameters parameters, Action onOpen, Action<bool> onClose)
         {
             string adUnitId = string.Empty;
 #if UNITY_ANDROID
@@ -248,7 +248,7 @@ namespace MirraGames.SDK.AppLovin
             }
         }
 
-        protected override void InvokeRewardedImpl(Action onOpen = null, Action<bool> onClose = null, string rewardTag = null)
+        protected override void InvokeRewardedImpl(RewardedParameters parameters, Action onOpen, Action<bool> onClose)
         {
             string adUnitId = string.Empty;
 #if UNITY_ANDROID
@@ -256,14 +256,14 @@ namespace MirraGames.SDK.AppLovin
 #elif UNITY_IOS
             adUnitId = configuration.RewardedAdUnitIdIOS;
 #endif
-            rewardedTag = rewardTag;
+            rewardedPlacementId = parameters.PlacementId;
             onRewardedClose = onClose;
 
             if (MaxSdk.IsRewardedAdReady(adUnitId))
             {
                 onOpen?.Invoke();
                 MaxSdk.ShowRewardedAd(adUnitId);
-                LogVideoAdsStarted("rewarded", rewardTag ?? "default_placement");
+                LogVideoAdsStarted("rewarded", parameters.PlacementId ?? "default_placement");
             }
             else
             {
