@@ -143,7 +143,7 @@ namespace MirraGames.SDK.AppLovin
             Logger.NotImplementedWarning(this, nameof(DisableBannerImpl));
         }
 
-        protected override void InvokeInterstitialImpl(Action onOpen = null, Action<bool> onClose = null)
+        protected override void InvokeInterstitialImpl(InterstitialParameters parameters, Action onOpen, Action<bool> onClose)
         {
             string adUnitId = string.Empty;
 #if UNITY_ANDROID
@@ -165,7 +165,7 @@ namespace MirraGames.SDK.AppLovin
             }
         }
 
-        protected override void InvokeRewardedImpl(Action onOpen = null, Action<bool> onClose = null, string rewardTag = null)
+        protected override void InvokeRewardedImpl(RewardedParameters parameters, Action onOpen, Action<bool> onClose)
         {
             string adUnitId = string.Empty;
 #if UNITY_ANDROID
@@ -173,7 +173,7 @@ namespace MirraGames.SDK.AppLovin
 #elif UNITY_IOS
             adUnitId = configuration.RewardedAdUnitIdIOS;
 #endif
-            rewardedTag = rewardTag;
+            rewardedTag = parameters.PlacementId;
             onRewardedClose = onClose;
 
             if (MaxSdk.IsRewardedAdReady(adUnitId))
