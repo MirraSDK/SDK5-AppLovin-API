@@ -67,6 +67,15 @@ namespace MirraGames.SDK.AppLovin
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdClosed", arg1, JsonUtility.ToJson(info));
             onInterstitialClose?.Invoke(true);
+
+            // Reload the interstitial ad
+            string adUnitId = string.Empty;
+#if UNITY_ANDROID
+            adUnitId = configuration.InterstitialAdUnitIdAndroid;
+#elif UNITY_IOS 
+            adUnitId = configuration.InterstitialAdUnitIdIOS;
+#endif
+            MaxSdk.LoadInterstitial(adUnitId);
         }
 
         private void OnInterstitialAdFailedToShow(string arg1, MaxSdkBase.ErrorInfo info1, MaxSdkBase.AdInfo info2)
