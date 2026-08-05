@@ -1,99 +1,144 @@
 using MirraGames.SDK.Common;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
-using UnityEngine.Events;
 using Logger = MirraGames.SDK.Common.Logger;
-using AppLovinMax;
 
 namespace MirraGames.SDK.AppLovin
 {
-
     [Provider(typeof(IAds))]
     public class AppLovinAds : CommonAds
     {
-
         private readonly AppLovinAds_Configuration configuration;
+        private readonly IEventDispatcher eventDispatcher;
 
-        private string rewardedTag;
-        private Action<bool> onRewardedClose;
-        private bool isRewardedSuccess;
-        private Action<bool> onInterstitialClose;
+        private string interstitialAdUnitId;
+        private string rewardedAdUnitId;
 
-        public AppLovinAds(AppLovinAds_Configuration configuration, IEventAggregator eventAggregator) : base(eventAggregator)
+        public AppLovinAds(AppLovinAds_Configuration configuration, IEventAggregator eventAggregator, IEventDispatcher eventDispatcher) : base(eventAggregator)
         {
             this.configuration = configuration;
-
+            this.eventDispatcher = eventDispatcher;
+            
             MaxSdkCallbacks.OnSdkInitializedEvent += (MaxSdkBase.SdkConfiguration sdkConfiguration) =>
             {
                 Logger.CreateText(nameof(AppLovinAds), "Max SDK Initialized", JsonUtility.ToJson(sdkConfiguration));
                 SetInitialized();
 #if UNITY_ANDROID
-                MaxSdk.LoadRewardedAd(configuration.RewardedAdUnitIdAndroid);
-                MaxSdk.LoadInterstitial(configuration.InterstitialAdUnitIdAndroid);
+                interstitialAdUnitId = configuration.InterstitialAdUnitIdAndroid;
+                rewardedAdUnitId = configuration.RewardedAdUnitIdAndroid;
 #elif UNITY_IOS
-                MaxSdk.LoadRewardedAd(configuration.RewardedAdUnitIdIOS);
-                MaxSdk.LoadInterstitial(configuration.InterstitialAdUnitIdIOS);
+                interstitialAdUnitId = configuration.InterstitialAdUnitIdIOS;
+                rewardedAdUnitId = configuration.RewardedAdUnitIdIOS;
 #endif
+                LoadInterstitial();
+                LoadRewarded();
             };
-
+            
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnRewardedAdLoaded;
             MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += OnRewardedAdFailedToLoad;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += OnRewardedAdOpen;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnRewardedAdFailedToShow;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnRewardedAdClosed;
+            
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnRewardedAdReceivedReward;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnRewardedAdRevenuePaidEvent;
 
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnInterstitialAdLoaded;
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnInterstitialAdFailedToLoad;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += OnInterstitialAdOpen;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnInterstitialAdFailedToShow;
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnInterstitialAdClosed;
+            
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnRewardedAdRevenuePaidEvent;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnInterstitialAdRevenuePaidEvent;
 
             MaxSdk.InitializeSdk();
         }
+        
+        #region InterstitialAd
 
         public override bool IsInterstitialAvailable => true;
-        public override bool IsInterstitialReady => true;
-        public override bool IsRewardedAvailable => true;
-        public override bool IsRewardedReady => true;
+        public override bool IsInterstitialReady => MaxSdk.IsInterstitialReady(interstitialAdUnitId);
+        
+        private Action onInterstitialOpen;
+        private Action<bool> onInterstitialClose;
+        private int interstitialRetryAttempt;
 
-        private void OnInterstitialAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
+        private void LoadInterstitial()
         {
-            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
+            MaxSdk.LoadInterstitial(interstitialAdUnitId);
+        }
+        
+        private void OnInterstitialAdLoaded(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdLoaded", arg1, JsonUtility.ToJson(info));
+            interstitialRetryAttempt = 0;
         }
 
-        private void OnInterstitialAdClosed(string arg1, MaxSdkBase.AdInfo info)
+        private void OnInterstitialAdFailedToLoad(string arg1, MaxSdkBase.ErrorInfo info)
         {
-            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdClosed", arg1, JsonUtility.ToJson(info));
-            onInterstitialClose?.Invoke(true);
-
-            // Reload the interstitial ad
-            string adUnitId = string.Empty;
-#if UNITY_ANDROID
-            adUnitId = configuration.InterstitialAdUnitIdAndroid;
-#elif UNITY_IOS 
-            adUnitId = configuration.InterstitialAdUnitIdIOS;
-#endif
-            MaxSdk.LoadInterstitial(adUnitId);
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdFailedToLoad", arg1, JsonUtility.ToJson(info));
+            DelayedInvoke(LoadInterstitial, (float) Math.Pow(2, Math.Min(6, ++interstitialRetryAttempt)));
         }
 
         private void OnInterstitialAdFailedToShow(string arg1, MaxSdkBase.ErrorInfo info1, MaxSdkBase.AdInfo info2)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdFailedToShow", arg1, JsonUtility.ToJson(info1), JsonUtility.ToJson(info2));
             onInterstitialClose?.Invoke(false);
+            LoadInterstitial();
         }
 
-        private void OnInterstitialAdFailedToLoad(string arg1, MaxSdkBase.ErrorInfo info)
+        private void OnInterstitialAdOpen(string arg1, MaxSdkBase.AdInfo info)
         {
-            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdFailedToLoad", arg1, JsonUtility.ToJson(info));
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdOpen", arg1, JsonUtility.ToJson(info));
+            onInterstitialOpen?.Invoke();
         }
 
-        private void OnInterstitialAdLoaded(string arg1, MaxSdkBase.AdInfo info)
+        private void OnInterstitialAdClosed(string arg1, MaxSdkBase.AdInfo info)
         {
-            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdLoaded", arg1, JsonUtility.ToJson(info));
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdClosed", arg1, JsonUtility.ToJson(info));
+            onInterstitialClose?.Invoke(true);
+            LoadInterstitial();
         }
 
+        private void OnInterstitialAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnInterstitialAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
+        }
+
+        protected override void InvokeInterstitialImpl(InterstitialParameters parameters, Action onOpen, Action<bool> onClose)
+        {
+            if (IsInterstitialReady)
+            {
+                onInterstitialClose = onClose;
+                onInterstitialOpen = onOpen;
+                MaxSdk.ShowInterstitial(interstitialAdUnitId);
+            }
+            else
+            {
+                Logger.CreateText(nameof(AppLovinAds), "Interstitial ad not ready");
+            }
+        }
+
+        #endregion
+
+        #region RewardedAd
+
+        private string rewardedTag;
+        private bool isRewardedSuccess;
+        
+        private Action onRewardedOpen;
+        private Action<bool> onRewardedClose;
+        private int rewardedRetryAttempt;
+        public override bool IsRewardedReady => MaxSdk.IsRewardedAdReady(rewardedAdUnitId);
+        public override bool IsRewardedAvailable => true;
+
+        private void OnRewardedAdOpen(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdOpen", arg1, JsonUtility.ToJson(info));
+            onRewardedOpen?.Invoke();
+        }
+        
         private void OnRewardedAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
@@ -110,32 +155,51 @@ namespace MirraGames.SDK.AppLovin
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdClosed", arg1, JsonUtility.ToJson(info));
             onRewardedClose?.Invoke(isRewardedSuccess);
             isRewardedSuccess = false;
-
-            // Reload the rewarded ad
-            string adUnitId = string.Empty;
-#if UNITY_ANDROID
-            adUnitId = configuration.RewardedAdUnitIdAndroid;
-#elif UNITY_IOS
-            adUnitId = configuration.RewardedAdUnitIdIOS;
-#endif
-            MaxSdk.LoadRewardedAd(adUnitId);
+            LoadRewarded();
         }
 
         private void OnRewardedAdFailedToShow(string arg1, MaxSdkBase.ErrorInfo info1, MaxSdkBase.AdInfo info2)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdFailedToShow", arg1, JsonUtility.ToJson(info1), JsonUtility.ToJson(info2));
             onRewardedClose?.Invoke(false);
+            LoadRewarded();
         }
 
         private void OnRewardedAdFailedToLoad(string arg1, MaxSdkBase.ErrorInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdFailedToLoad", arg1, JsonUtility.ToJson(info));
+            DelayedInvoke(LoadRewarded, (float) Math.Pow(2, Math.Min(6, ++rewardedRetryAttempt)));
         }
 
         private void OnRewardedAdLoaded(string arg1, MaxSdkBase.AdInfo info)
         {
             Logger.CreateText(nameof(AppLovinAds), "OnRewardedAdLoaded", arg1, JsonUtility.ToJson(info));
+            rewardedRetryAttempt = 0;
         }
+
+        private void LoadRewarded()
+        {
+            MaxSdk.LoadRewardedAd(rewardedAdUnitId);
+        }
+
+        protected override void InvokeRewardedImpl(RewardedParameters parameters, Action onOpen, Action<bool> onClose)
+        {
+            if (IsRewardedReady)
+            {
+                rewardedTag = parameters.PlacementId;
+                onRewardedClose = onClose;
+                onRewardedOpen = onOpen;
+                MaxSdk.ShowRewardedAd(rewardedAdUnitId, rewardedTag);
+            }
+            else
+            {
+                Logger.CreateText(nameof(AppLovinAds), "Rewarded ad not ready");
+            }
+        }
+        
+        #endregion
+
+        #region BannerAd
 
         protected override void InvokeBannerImpl()
         {
@@ -152,52 +216,16 @@ namespace MirraGames.SDK.AppLovin
             Logger.NotImplementedWarning(this, nameof(DisableBannerImpl));
         }
 
-        protected override void InvokeInterstitialImpl(InterstitialParameters parameters, Action onOpen, Action<bool> onClose)
-        {
-            string adUnitId = string.Empty;
-#if UNITY_ANDROID
-            adUnitId = configuration.InterstitialAdUnitIdAndroid;
-#elif UNITY_IOS
-            adUnitId = configuration.InterstitialAdUnitIdIOS;
-#endif
-            onInterstitialClose = onClose;
+        #endregion
 
-            if (MaxSdk.IsInterstitialReady(adUnitId))
+        private void DelayedInvoke(Action func, float delay)
+        {
+            eventDispatcher.StartCoroutine(CorutineFunction());
+            IEnumerator CorutineFunction()
             {
-                onOpen?.Invoke();
-                MaxSdk.ShowInterstitial(adUnitId);
-            }
-            else
-            {
-                Logger.CreateText(nameof(AppLovinAds), "Interstitial ad not ready");
-                onClose?.Invoke(false);
+                yield return new WaitForSecondsRealtime(delay);
+                func();
             }
         }
-
-        protected override void InvokeRewardedImpl(RewardedParameters parameters, Action onOpen, Action<bool> onClose)
-        {
-            string adUnitId = string.Empty;
-#if UNITY_ANDROID
-            adUnitId = configuration.RewardedAdUnitIdAndroid;
-#elif UNITY_IOS
-            adUnitId = configuration.RewardedAdUnitIdIOS;
-#endif
-            rewardedTag = parameters.PlacementId;
-            onRewardedClose = onClose;
-
-            if (MaxSdk.IsRewardedAdReady(adUnitId))
-            {
-                onOpen?.Invoke();
-                MaxSdk.ShowRewardedAd(adUnitId);
-            }
-            else
-            {
-                Logger.CreateText(nameof(AppLovinAds), "Rewarded ad not ready");
-                onClose?.Invoke(false);
-            }
-
-        }
-
     }
-
 }
