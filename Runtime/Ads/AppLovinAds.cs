@@ -14,6 +14,7 @@ namespace MirraGames.SDK.AppLovin
 
         private string interstitialAdUnitId;
         private string rewardedAdUnitId;
+        private string bannerAdUnitId;
 
         public AppLovinAds(AppLovinAds_Configuration configuration, IEventAggregator eventAggregator, IEventDispatcher eventDispatcher) : base(eventAggregator)
         {
@@ -23,16 +24,18 @@ namespace MirraGames.SDK.AppLovin
             MaxSdkCallbacks.OnSdkInitializedEvent += (MaxSdkBase.SdkConfiguration sdkConfiguration) =>
             {
                 Logger.CreateText(nameof(AppLovinAds), "Max SDK Initialized", JsonUtility.ToJson(sdkConfiguration));
-                SetInitialized();
 #if UNITY_ANDROID
                 interstitialAdUnitId = configuration.InterstitialAdUnitIdAndroid;
                 rewardedAdUnitId = configuration.RewardedAdUnitIdAndroid;
+                bannerAdUnitId = configuration.BannerAdUnitIdAndroid;
 #elif UNITY_IOS
                 interstitialAdUnitId = configuration.InterstitialAdUnitIdIOS;
                 rewardedAdUnitId = configuration.RewardedAdUnitIdIOS;
+                bannerAdUnitId = configuration.BannerAdUnitIdIOS;
 #endif
                 LoadInterstitial();
                 LoadRewarded();
+                SetInitialized();
             };
             
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnRewardedAdLoaded;
@@ -51,6 +54,9 @@ namespace MirraGames.SDK.AppLovin
             
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnRewardedAdRevenuePaidEvent;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnInterstitialAdRevenuePaidEvent;
+            MaxSdkCallbacks.Banner.OnAdLoadedEvent += OnBannerAdLoaded;
+            MaxSdkCallbacks.Banner.OnAdLoadFailedEvent += OnBannerAdFailedToLoad;
+            MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent += OnBannerAdRevenuePaidEvent;
 
             MaxSdk.InitializeSdk();
         }
@@ -201,19 +207,79 @@ namespace MirraGames.SDK.AppLovin
 
         #region BannerAd
 
+        private bool isBannerCreated;
+        private bool isBannerVisible;
+        private int bannerRetryAttempt;
+
+        public override bool IsBannerAvailable => true;
+        public override bool IsBannerReady { get; protected set; }
+        public override bool IsBannerVisible => isBannerVisible;
+
+        private void CreateBanner()
+        {
+            MaxSdk.CreateBanner(bannerAdUnitId, MaxSdkBase.BannerPosition.BottomCenter);
+            isBannerCreated = true;
+        }
+
+        private void LoadBanner()
+        {
+            if (!isBannerCreated)
+            {
+                CreateBanner();
+                return;
+            }
+            MaxSdk.LoadBanner(bannerAdUnitId);
+        }
+
+        private void OnBannerAdLoaded(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnBannerAdLoaded", arg1, JsonUtility.ToJson(info));
+            IsBannerReady = true;
+            bannerRetryAttempt = 0;
+        }
+
+        private void OnBannerAdFailedToLoad(string arg1, MaxSdkBase.ErrorInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnBannerAdFailedToLoad", arg1, JsonUtility.ToJson(info));
+            IsBannerReady = false;
+            isBannerCreated = false;
+            DelayedInvoke(LoadBanner, (float) Math.Pow(2, Math.Min(6, ++bannerRetryAttempt)));
+        }
+
+        private void OnBannerAdRevenuePaidEvent(string arg1, MaxSdkBase.AdInfo info)
+        {
+            Logger.CreateText(nameof(AppLovinAds), "OnBannerAdRevenuePaidEvent", arg1, JsonUtility.ToJson(info));
+        }
+
         protected override void InvokeBannerImpl()
         {
-            Logger.NotImplementedWarning(this, nameof(InvokeBannerImpl));
+            LoadBanner();
+            MaxSdk.ShowBanner(bannerAdUnitId);
+            isBannerVisible = true;
         }
 
         protected override void RefreshBannerImpl()
         {
-            Logger.NotImplementedWarning(this, nameof(RefreshBannerImpl));
+            if (isBannerCreated)
+            {
+                MaxSdk.DestroyBanner(bannerAdUnitId);
+            }
+            isBannerCreated = false;
+            IsBannerReady = false;
+            isBannerVisible = false;
+            LoadBanner();
+            MaxSdk.ShowBanner(bannerAdUnitId);
+            isBannerVisible = true;
         }
 
         protected override void DisableBannerImpl()
         {
-            Logger.NotImplementedWarning(this, nameof(DisableBannerImpl));
+            if (!isBannerCreated)
+            {
+                return;
+            }
+            MaxSdk.HideBanner(bannerAdUnitId);
+            isBannerVisible = false;
         }
 
         #endregion

@@ -7,3 +7,5 @@
 ```
 https://github.com/MirraSDK/SDK5-AppLovin-API.git
 ```
+
+4. In MirraSDK Toolkit, select the AppLovinAds provider and set the Android or iOS ad unit IDs for interstitial, rewarded, and banner ads.

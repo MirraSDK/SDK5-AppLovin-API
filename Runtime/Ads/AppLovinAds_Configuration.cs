@@ -16,6 +16,9 @@ namespace MirraGames.SDK.AppLovin
         [field: SerializeField] public string RewardedAdUnitIdAndroid { get; private set; } = "demo-rewarded";
         [field: SerializeField] public string RewardedAdUnitIdIOS { get; private set; } = "demo-rewarded";
 
+        [field: SerializeField] public string BannerAdUnitIdAndroid { get; private set; } = "demo-banner";
+        [field: SerializeField] public string BannerAdUnitIdIOS { get; private set; } = "demo-banner";
+
         public override StringProperty[] GetStringProperties()
         {
             return new StringProperty[] {
@@ -38,6 +41,16 @@ namespace MirraGames.SDK.AppLovin
                     "Rewarded UID iOS",
                     getter: () => { return RewardedAdUnitIdIOS; },
                     setter: (value) => { RewardedAdUnitIdIOS = value; }
+                ),
+                new(
+                    "Banner UID Android",
+                    getter: () => { return BannerAdUnitIdAndroid; },
+                    setter: (value) => { BannerAdUnitIdAndroid = value; }
+                ),
+                new(
+                    "Banner UID iOS",
+                    getter: () => { return BannerAdUnitIdIOS; },
+                    setter: (value) => { BannerAdUnitIdIOS = value; }
                 )
             };
         }
